@@ -24,6 +24,18 @@ LOG_MODULE_REGISTER(soc_mp, CONFIG_SOC_LOG_LEVEL);
 #include <cavs-shim.h>
 #include <cavs-mem.h>
 
+# ifndef IPC_DSP_BASE
+# define IPC_DSP_BASE(core)    (DT_REG_ADDR(DT_NODELABEL(idc)) + 0x80 * (core))
+# endif
+
+#define IPC_IDCCTL            0x50
+#define IPC_IDCCTL_IDCTBIE(x) BIT(x)
+
+static inline void idc_write(uint32_t reg, uint32_t core_id, uint32_t val)
+{
+	*((volatile uint32_t*)(IPC_DSP_BASE(core_id) + reg)) = val;
+}
+
 extern void z_sched_ipi(void);
 extern void z_smp_start_cpu(int id);
 extern void z_reinit_idle_thread(int i);
@@ -296,9 +308,25 @@ void arch_start_cpu(int cpu_num, k_thread_stack_t *stack, int sz,
 	memcpy(lpsram, tramp, ARRAY_SIZE(tramp));
 	lpsram[1] = z_soc_mp_asm_entry;
 #endif
+	{
+		int i, j;
+		uint32_t mask;
+
+		for (i = 0; i < CONFIG_MP_NUM_CPUS; i++) {
+			mask = 0;
+
+			for (j = 0; j < CONFIG_MP_NUM_CPUS; j++) {
+				if (i == j)
+					continue;
+
+				mask |= IPC_IDCCTL_IDCTBIE(j);
+			}
+			idc_write(IPC_IDCCTL, i, mask);
+		}
+	}
 
 	__asm__ volatile("rsr %0, VECBASE\n\t" : "=r"(vecbase));
-
+	printk("DEBUG %s: start cpu%d starts cpu%dt\n", __func__, curr_cpu, cpu_num);
 	start_rec.cpu = cpu_num;
 	start_rec.fn = fn;
 	start_rec.arg = arg;
