@@ -39,10 +39,16 @@ struct cavs_registers *get_base_address(struct cavs_ictl_runtime *context)
 #endif
 }
 
+int irq_count[4] = { 0 };
+
 static ALWAYS_INLINE void cavs_ictl_dispatch_child_isrs(uint32_t intr_status,
 						       uint32_t isr_base_offset)
 {
 	uint32_t intr_bitpos, intr_offset;
+	unsigned core = arch_curr_cpu()->id;
+
+	if ((++irq_count[core] & 0xff) == 0)
+		printk("ISR: %d: intr count %d\n", core, irq_count[core]);
 
 	/* Dispatch lower level ISRs depending upon the bit set */
 	while (intr_status) {
