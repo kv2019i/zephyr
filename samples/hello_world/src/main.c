@@ -16,8 +16,10 @@ struct k_sem timer_sems[CONFIG_MP_NUM_CPUS];
 struct k_timer timers[CONFIG_MP_NUM_CPUS];
 
 uint32_t worst_err[CONFIG_MP_NUM_CPUS];
-uint64_t err_sum[CONFIG_MP_NUM_CPUS];
-uint32_t err_count[CONFIG_MP_NUM_CPUS];
+uint64_t avg_sum[CONFIG_MP_NUM_CPUS];
+uint32_t avg_count[CONFIG_MP_NUM_CPUS];
+
+//#define ALL_CORES_BUSY 1
 
 uint32_t ccount(void)
 {
@@ -27,12 +29,15 @@ uint32_t ccount(void)
 	return cyc;
 }
 
-
 void work_fn(void *arg1, void *arg2, void *arg3)
 {
+	const int32_t tick_nominal = k_us_to_cyc_floor32(TIMER_PERIOD_US);
 	int cpu = (int)arg1;
 	printk("ANDY %s:%d cpu%d (real %d)\n", __func__, __LINE__, cpu, arch_curr_cpu()->id);
 
+#ifndef ALL_CORES_BUSY
+	return;
+#endif
 	/* Just spin, coming up every once in a while to remark that
 	 * we're running and report statistics
 	 */
@@ -48,9 +53,11 @@ void work_fn(void *arg1, void *arg2, void *arg3)
 		 * updates these values, but for stats this is good
 		 * enough
 		 */
-		printk("work%d: worst %d avg %d (N = %d)\n",
-		       cpu, worst_err[cpu], (int)(err_sum[cpu]/err_count[cpu]),
-		       err_count[cpu]);
+		printk("work%d: worst %d avg %d expected %d (N = %d)\n",
+		       cpu, worst_err[cpu], (int)(avg_sum[cpu]/avg_count[cpu]),
+		       tick_nominal, avg_count[cpu]);
+
+		worst_err[cpu] = 0;
 	}
 }
 
@@ -60,6 +67,7 @@ void timer_thread_fn(void *arg1, void *arg2, void *arg3)
 	const int32_t tick_nominal = k_us_to_cyc_floor32(TIMER_PERIOD_US);
 	int cpu = (int)arg1;
 	uint32_t cyc, last_cyc = k_cycle_get_32();
+	uint32_t count = 0;
 
 	while (true) {
 		__ASSERT_NO_MSG(cpu == arch_curr_cpu()->id);
@@ -67,14 +75,21 @@ void timer_thread_fn(void *arg1, void *arg2, void *arg3)
 		k_sem_take(&timer_sems[cpu], K_FOREVER);
 		cyc = k_cycle_get_32();
 
-		uint32_t err = abs((int32_t)(cyc - last_cyc) - tick_nominal);
+		/* FIXME: wrap-around not handled */
+		uint32_t d = cyc - last_cyc;
 
-		err_sum[cpu] += err;
-		err_count[cpu] += 1;
-		if (err > worst_err[cpu]) {
-			worst_err[cpu] = err;
-		}
+		avg_sum[cpu] += d;
+		avg_count[cpu] += 1;
+		if (d > worst_err[cpu])
+			worst_err[cpu] = d;
 		last_cyc = cyc;
+
+#ifndef ALL_CORES_BUSY
+		if (++count % 1000 == 0)
+			printk("work%d: worst %d avg %d expected %d (N = %d)\n",
+			       cpu, worst_err[cpu], (int)(avg_sum[cpu]/avg_count[cpu]),
+			       tick_nominal, avg_count[cpu]);
+#endif
 	}
 }
 
