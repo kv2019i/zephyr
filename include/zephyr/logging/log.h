@@ -37,7 +37,8 @@ extern "C" {
  * @param ... A string optionally containing printk valid conversion specifier,
  * followed by as many values as specifiers.
  */
-#define LOG_ERR(...)    Z_LOG(LOG_LEVEL_ERR, __VA_ARGS__)
+//#define LOG_ERR(...)    Z_LOG(LOG_LEVEL_ERR, __VA_ARGS__)
+#define LOG_ERR(...) do { printk(__VA_ARGS__); printk("\n"); } while(0)
 
 /**
  * @brief Writes a WARNING level message to the log.
