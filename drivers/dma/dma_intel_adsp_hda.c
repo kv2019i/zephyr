@@ -301,6 +301,15 @@ int intel_adsp_hda_dma_start(const struct device *dev, uint32_t channel)
 	set_fifordy = (cfg->direction == HOST_TO_MEMORY || cfg->direction == MEMORY_TO_HOST);
 	intel_adsp_hda_enable(cfg->base, cfg->regblock_size, channel, set_fifordy);
 
+	if (!(*DGCS(cfg->base, cfg->regblock_size, channel) & DGCS_GEN)) {
+		printk("WARNING: GEN bit not set after enable! (core %u)\n", arch_proc_id());
+	}
+
+	if (!WAIT_FOR(*DGCS(cfg->base, cfg->regblock_size, channel) & DGCS_GEN, 10000, k_busy_wait(1))) {
+		printk("ERROR: GEN bit not toggling, aborting (core %u)\n", arch_proc_id());
+		return -1;
+	}
+
 	if (cfg->direction == MEMORY_TO_PERIPHERAL) {
 		size = intel_adsp_hda_get_buffer_size(cfg->base, cfg->regblock_size, channel);
 		intel_adsp_hda_link_commit(cfg->base, cfg->regblock_size, channel, size);
