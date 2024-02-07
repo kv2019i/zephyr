@@ -208,6 +208,11 @@ static void irq_init(void)
 	irq_enable(TIMER_IRQ);
 }
 
+void smp_timer_init2(void)
+{
+	irq_enable(TIMER_IRQ);
+}
+
 void smp_timer_init(void)
 {
 	irq_init();

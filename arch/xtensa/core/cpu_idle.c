@@ -6,10 +6,18 @@
 #include <zephyr/toolchain.h>
 #include <zephyr/tracing/tracing.h>
 
+void smp_timer_init2(void);
+
 #ifndef CONFIG_ARCH_CPU_IDLE_CUSTOM
 void arch_cpu_idle(void)
 {
+
 	sys_trace_idle();
+
+	if (arch_proc_id()) {
+		smp_timer_init2();
+	}
+
 	__asm__ volatile ("waiti 0");
 }
 #endif

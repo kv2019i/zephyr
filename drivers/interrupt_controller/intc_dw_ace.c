@@ -69,6 +69,7 @@
  */
 
 #define ACE_INTC ((volatile struct dw_ictl_registers *)DT_REG_ADDR(DT_NODELABEL(ace_intc)))
+unsigned int debug_irqs[4];
 
 static inline bool is_dw_irq(uint32_t irq)
 {
@@ -146,6 +147,8 @@ static void dwint_isr(const void *arg)
 {
 	uint32_t fs = ACE_INTC[arch_proc_id()].irq_finalstatus_l;
 
+	debug_irqs[arch_proc_id()]++;
+	
 	while (fs) {
 		uint32_t bit = find_lsb_set(fs) - 1;
 		uint32_t offset = CONFIG_2ND_LVL_ISR_TBL_OFFSET + bit;
