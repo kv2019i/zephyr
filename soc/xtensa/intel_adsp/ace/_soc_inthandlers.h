@@ -131,5 +131,14 @@ static inline int _xtensa_handle_one_int0(unsigned int mask)
 }
 static inline int _xtensa_handle_one_int4(unsigned int mask)
 {
+	if (mask & BIT(4)) {
+		uint32_t depc = 0;
+		uint32_t cause;
+		__asm__ volatile("rsr.exccause %0" : "=r"(cause));
+		__asm__ volatile("rsr.depc %0" : "=r"(depc));
+		printk("D: %u cause %08x depc %08x", arch_proc_id(), cause, depc);
+		k_panic();
+		return mask;
+	}
 	return 0;
 }

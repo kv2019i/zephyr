@@ -212,10 +212,18 @@ void *xtensa_excint1_c(int *interrupted_stack)
 	bool is_dblexc = false;
 	uint32_t ps;
 	void *pc, *print_stack = (void *)interrupted_stack;
-	uint32_t depc = 0;
+	uint32_t depc = 0, vaddr = 0;
 
 	__asm__ volatile("rsr.exccause %0" : "=r"(cause));
-
+	if (arch_proc_id()) {
+		__asm__ volatile("rsr.depc %0" : "=r"(depc));
+		__asm__ volatile("rsr.excvaddr %0" : "=r"(vaddr));
+		printk("EXC c%u cause %u vaddr %08x, depc %08x\n", arch_proc_id(), cause, vaddr, depc);
+		LOG_ERR(" ** SYSCALL PS %p PC %p",
+			(void *)bsa->ps, (void *)bsa->pc);
+		xtensa_dump_stack(interrupted_stack);
+		k_panic();
+	}
 #ifdef CONFIG_XTENSA_MMU
 	__asm__ volatile("rsr.depc %0" : "=r"(depc));
 
