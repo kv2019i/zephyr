@@ -162,8 +162,12 @@ void soc_mp_startup(uint32_t cpu)
 	xtensa_irq_enable(ACE_INTC_IRQ);
 
 #if CONFIG_ADSP_IDLE_CLOCK_GATING
-	/* Disable idle power gating */
-	DSPCS.bootctl[cpu].bctl |= DSPBR_BCTL_WAITIPPG;
+	if (cpu == 0) {
+		/* Disable idle power gating */
+		DSPCS.bootctl[cpu].bctl |= DSPBR_BCTL_WAITIPPG;
+	} else {
+		DSPCS.bootctl[cpu].bctl |= DSPBR_BCTL_WAITIPCG | DSPBR_BCTL_WAITIPPG;
+	}
 #else
 	/* Disable idle power and clock gating */
 	DSPCS.bootctl[cpu].bctl |= DSPBR_BCTL_WAITIPCG | DSPBR_BCTL_WAITIPPG;

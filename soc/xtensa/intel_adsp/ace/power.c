@@ -367,7 +367,12 @@ void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 		}
 
 #if CONFIG_ADSP_IDLE_CLOCK_GATING
-		DSPCS.bootctl[cpu].bctl |= DSPBR_BCTL_WAITIPPG;
+		if (cpu == 0) {
+			/* Clock gating only on core0 */
+			DSPCS.bootctl[cpu].bctl |= DSPBR_BCTL_WAITIPPG;
+		} else {
+			DSPCS.bootctl[cpu].bctl |= DSPBR_BCTL_WAITIPCG | DSPBR_BCTL_WAITIPPG;
+		}
 #else
 		DSPCS.bootctl[cpu].bctl |= DSPBR_BCTL_WAITIPCG | DSPBR_BCTL_WAITIPPG;
 #endif /* CONFIG_ADSP_IDLE_CLOCK_GATING */
