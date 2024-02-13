@@ -44,7 +44,7 @@ void xtensa_fatal_log(void)
 	__asm__ volatile("rsr.epc1 %0" : "=r"(epc));
 	__asm__ volatile("rsr.depc %0" : "=r"(depc));
 
-	LOG_ERR(" ** FATAL EXCEPTION **");
+	LOG_ERR(" ** FATAL EXCEPTION %u **", arch_proc_id());
 	LOG_ERR(" **  cause (exccause): %p VADDR: %p **", (void *)cause, (void *)vaddr);
 	LOG_ERR(" **  epc: %p depc: %p **", (void *)epc, (void *)depc);
 }
